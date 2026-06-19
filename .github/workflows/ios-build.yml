@@ -27,7 +27,8 @@ jobs:
       - name: Build App
         run: |
           xcodebuild \
+          -project ADG.xcodeproj \
           -scheme ADG \
-          -destination 'platform=iOS Simulator,name=iPhone 16' \
+          -destination 'generic/platform=iOS Simulator' \
           build
 
