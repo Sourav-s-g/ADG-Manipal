@@ -15,7 +15,7 @@
         </a>
         <ul class="nav-links">
             <li><a href="index.html">Home</a></li>
-            <li><li><a href="privacy.html" class="active">Privacy Policy</a></li></li>
+            <li><a href="privacy.html" class="active">Privacy Policy</a></li>
         </ul>
     </nav>
 
@@ -26,22 +26,62 @@
                 <div class="date">Last updated: June 2026</div>
                 
                 <h2>1. Information We Collect</h2>
-                <p>Our applications are built with user privacy and security as our top priority. We do not collect, store, or transmit any personally identifiable information (PII), telemetry data, or usage analytics to external servers. Any application configuration, keys, or preferences you generate remain strictly on your local device.</p>
+                <p>Our application collects only the minimal data required to support secure user authentication, event registration management, and dynamic content rendering. This data is transmitted to and stored on our remote backend infrastructure.</p>
+                
+                <h3>Authentication Data</h3>
+                <ul>
+                    <li>Email address and password</li>
+                    <li>Full name (collected strictly during user sign-up)</li>
+                    <li>Supabase user ID and system metadata assigned by the backend infrastructure</li>
+                </ul>
+
+                <h3>Event Registration Data</h3>
+                <ul>
+                    <li>Student name and email address</li>
+                    <li>Optional custom registration fields (depending on event requirements): Phone number, Registration number, Department, Year, and additional notes</li>
+                </ul>
+
+                <h3>Uploaded Media & App Content</h3>
+                <ul>
+                    <li>Images selected by users or administrators for event covers, announcement posters, or board member headshots</li>
+                    <li>Application text data including announcements, event details, board member profiles, and "About Us" configurations</li>
+                </ul>
+                <p><strong>What We Do Not Collect:</strong> The application does not access, collect, or request permissions for your precise location, personal contacts, health data, advertising identifiers, background photos, or third-party telemetry/analytics libraries.</p>
                 
                 <h2>2. How We Use the Information</h2>
-                <p>Because we do not collect or harvest any user data, no personal information is processed, analyzed, or utilized by our team. Any processing of data happens purely dynamically on-device to execute the core functions of the application layout and interface features.</p>
+                <p>Collected information is used exclusively to deliver the core functional experiences of the application:</p>
+                <ul>
+                    <li><strong>Authentication:</strong> Email and password credentials are processed via Supabase Auth to establish secure user accounts, manage active sessions, grant registration capabilities, and provision administrative access levels.</li>
+                    <li><strong>Event Management:</strong> Registration information is compiled into internal rosters to track event participation and manage event workflows.</li>
+                    <li><strong>Media & Display:</strong> Uploaded images and structured app content are fetched from our database to render announcement feeds, event cover cards, active roster details, and board member profile layouts within the user interface.</li>
+                </ul>
                 
                 <h2>3. Whether the Data is Shared</h2>
-                <p>We do not sell, trade, rent, or otherwise share any user data with third-party organizations, advertising networks, or external analytics firms. Your data never leaves your sandboxed device environment.</p>
+                <p>We value user privacy and strictly limit data exposure to our explicit functional architecture:</p>
+                <ul>
+                    <li><strong>Primary Infrastructure:</strong> Data is shared exclusively with our internal Supabase backend services, including Supabase Auth, dedicated relational database tables (<code>announcements</code>, <code>events</code>, <code>registrations</code>, <code>board_members</code>, <code>app_config</code>), and the Supabase Storage bucket <code>adg-assets</code>.</li>
+                    <li><strong>Public Media Availability:</strong> Images uploaded to the <code>adg-assets</code> storage bucket are served via public URLs. Anyone possessing the direct asset URL can access the corresponding image file.</li>
+                    <li><strong>No Commercial Sharing:</strong> Personal registration tracking and user profiles are utilized strictly internal to the ecosystem. We do not sell, rent, trade, or distribute data to third-party advertising networks, analytics trackers, or data brokers.</li>
+                </ul>
                 
-                <h2>4. Data Security</h2>
-                <p>Any application data configuration, security values, or personal preferences are kept isolated within the secure iOS user sandbox environment. Secure data parameters utilize native iOS hardware-level Keychain Services for system encryption storage, ensuring robust protection against unauthorized local access.</p>
+                <h2>4. Data Security and Cloud Storage</h2>
+                <p>Your data transmission and cloud persistence are secured utilizing standard engineering protocols:</p>
+                <ul>
+                    <li><strong>Transit Security:</strong> All API and data connections to our remote Supabase backend are encrypted over HTTPS using the Supabase Swift client SDK, authenticating via system <code>projectURL</code> and <code>anonKey</code> parameters.</li>
+                    <li><strong>Session Security:</strong> Authenticative session persistence is managed securely via the Supabase SDK, emitting local tokens to maintain standard login states. Image downloading is handled via standard <code>URLSession</code> handling utilizing native device caching protocols.</li>
+                    <li><strong>Storage Architecture:</strong> No local database frameworks (such as Core Data or CloudKit) are deployed. Data relies completely on the transit security and storage protection rules configured on our remote cloud host.</li>
+                </ul>
 
                 <h2>5. User Rights and Data Deletion</h2>
-                <p>We fully support your right to control your data. Because all application parameters are stored strictly on-device, you have absolute control. You can delete all application data, preferences, or saved files at any time simply by uninstalling the application from your iOS device. No residual profiles or cloud backups are maintained by us.</p>
+                <p>We respect your rights over your data records. The application provides native controls for signing up, signing in, and signing out of your active session.</p>
+                <p>While the user interface does not currently offer a self-service automated account deletion switch, users retain full rights to have their data purged. Administrators maintain the systemic capabilities to delete individual announcements, events, and board entries. If you wish to revoke your registration details, clear your specific data fields, or request the total deletion of your authentication account profile from the backend database, please issue a manual deletion request to our support contacts listed below.</p>
                 
                 <h2>6. Contact Information</h2>
-                <p>If you have any questions, feedback, or operational queries regarding our privacy practices or application protocols, please feel free to reach out to us via official campus channels at the Apple Developers Group, MIT Manipal.</p>
+                <p>For support, operations queries, or to exercise your rights regarding manual account data deletion, please contact us directly via our official communication channels:</p>
+                <ul>
+                    <li><strong>Support Email:</strong> <a href="mailto:admitmanipal@gmail.com">admitmanipal@gmail.com</a></li>
+                    <li><strong>Support Phone Line:</strong> +91 98315 79016</li>
+                </ul>
             </div>
         </div>
     </div>
