@@ -8,15 +8,7 @@ import UIKit
 @Observable
 final class AnnouncementsViewModel {
     var announcements: [Announcement] = []
-    var draft = Announcement(
-        id: UUID(),
-        title: "",
-        body: "",
-        posterURL: nil,
-        isPinned: false,
-        priority: 0,
-        publishedAt: Date()
-    )
+    var draft: Announcement = .empty
     var selectedPhoto: PhotosPickerItem?
     var isEditing = false
     var isLoading = false
@@ -28,6 +20,17 @@ final class AnnouncementsViewModel {
         self.repository = repository
     }
 
+    // MARK: - Sorted Projections for the View
+    var sortedAnnouncements: [Announcement] {
+        announcements.sorted {
+            if $0.isPinned != $1.isPinned {
+                return $0.isPinned && !$1.isPinned // Pinned items stay on top
+            }
+            return $0.publishedAt > $1.publishedAt // Most recent announcements next
+        }
+    }
+
+    // MARK: - Actions
     func load() async {
         isLoading = true
         defer { isLoading = false }
@@ -39,15 +42,7 @@ final class AnnouncementsViewModel {
     }
 
     func beginCreate() {
-        draft = Announcement(
-            id: UUID(),
-            title: "",
-            body: "",
-            posterURL: nil,
-            isPinned: false,
-            priority: 0,
-            publishedAt: Date()
-        )
+        draft = .empty
         selectedPhoto = nil
         isEditing = true
     }
@@ -65,6 +60,7 @@ final class AnnouncementsViewModel {
                let image = UIImage(data: data) {
                 draft.posterURL = try await repository.uploadJPEG(image, folder: "announcements")
             }
+            
             try await repository.upsertAnnouncement(draft)
             isEditing = false
             await load()
@@ -80,5 +76,21 @@ final class AnnouncementsViewModel {
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+}
+
+// MARK: - Factory Support Extensions
+
+private extension Announcement {
+    static var empty: Announcement {
+        Announcement(
+            id: UUID(),
+            title: "",
+            body: "",
+            posterURL: nil,
+            isPinned: false,
+            priority: 0,
+            publishedAt: Date()
+        )
     }
 }

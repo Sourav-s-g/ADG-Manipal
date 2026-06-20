@@ -45,11 +45,39 @@ extension Color {
 }
 
 enum ADGTheme {
+    // MARK: - Core Structural Colors
     static let paper = Color(hex: "FBFAF6")
     static let surface = Color(hex: "F1EFE7")
     static let ink = Color.black
     static let hairline = Color.black.opacity(0.14)
 
+    // MARK: - Rose Gold Brand Tokens
+    static let roseGoldLight = Color(hex: "F4D1C2")   // Highlight shine
+    static let roseGoldMedium = Color(hex: "E8AF9D")  // Core signature tint
+    static let roseGoldDark = Color(hex: "D59B85")    // Shadow depth
+    
+    static let appBackground = Color(hex: "FFE8B8")
+
+    // MARK: - Brand Gradients
+    /// Core metallic rose gold gradient directly matching the community logo artwork
+    static var roseGoldGradient: LinearGradient {
+        LinearGradient(
+            colors: [roseGoldLight, roseGoldMedium, roseGoldDark],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+    
+    /// Soft transition context to smoothly shade views into the default paper background tone
+    static var roseGoldToWhiteGradient: LinearGradient {
+        LinearGradient(
+            colors: [roseGoldLight.opacity(0.45), paper],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
+    // MARK: - Layout Configurations
     static let cardRadius: CGFloat = 8
     static let pagePadding: CGFloat = 25
 }

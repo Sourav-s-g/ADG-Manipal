@@ -22,6 +22,9 @@ final class EventsViewModel {
     var isLoading = false
     var errorMessage: String?
     var selectedPhoto: PhotosPickerItem?
+    
+    // Track the last active user ID to avoid wiping states on save refresh
+    private var lastLoadedUserID: UUID?
 
     private let repository: ADGRepository
 
@@ -40,12 +43,16 @@ final class EventsViewModel {
     }
 
     func load(userID: UUID? = nil) async {
+        // Cache the userID context if provided, or retain previous if refreshing from draft save
+        if userID != nil { self.lastLoadedUserID = userID }
+        let targetUserID = userID ?? lastLoadedUserID
+        
         isLoading = true
         defer { isLoading = false }
         do {
             events = try await repository.fetchEvents()
-            if let userID {
-                registeredEventIDs = try await repository.fetchRegisteredEventIDs(userID: userID)
+            if let targetUserID {
+                registeredEventIDs = try await repository.fetchRegisteredEventIDs(userID: targetUserID)
             } else {
                 registeredEventIDs = []
             }
@@ -68,6 +75,7 @@ final class EventsViewModel {
 
     func saveDraft() async {
         do {
+            // Handle asynchronous background photo conversions & multi-part uploads safely
             if let selectedPhoto,
                let data = try await selectedPhoto.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
@@ -76,7 +84,9 @@ final class EventsViewModel {
 
             try await repository.upsertEvent(draft)
             isEditing = false
-            await load()
+            
+            // Reloads without wiping out user registration checkmarks
+            await load(userID: lastLoadedUserID)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -85,7 +95,7 @@ final class EventsViewModel {
     func delete(_ event: Event) async {
         do {
             try await repository.deleteEvent(id: event.id)
-            await load()
+            await load(userID: lastLoadedUserID)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -121,6 +131,7 @@ final class EventsViewModel {
     }
 
     func refreshRegistrationState(userID: UUID?) async {
+        self.lastLoadedUserID = userID
         do {
             if let userID {
                 registeredEventIDs = try await repository.fetchRegisteredEventIDs(userID: userID)
@@ -142,6 +153,8 @@ final class EventsViewModel {
         }
     }
 }
+
+// MARK: - Enums & Extensions
 
 enum EventSegment: String, CaseIterable, Identifiable {
     case upcoming = "Upcoming"

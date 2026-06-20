@@ -8,7 +8,6 @@ struct AboutUsView: View {
     @State private var expandedPreviousMemberIDs: Set<UUID> = []
 
     var body: some View {
-        // 🔘 Removed NavigationStack wrapper to eliminate UIKit layout collisions
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .top) {
@@ -16,14 +15,13 @@ struct AboutUsView: View {
                         .font(.body)
                         .lineSpacing(5)
                         .foregroundStyle(ADGTheme.ink.opacity(0.75))
-                        .animation(.default, value: viewModel.aboutText) // Clean fade upon dynamic update
+                        .animation(.default, value: viewModel.aboutText)
                     
                     if session.isAdminAuthenticated {
                         Spacer()
                         
                         Button {
-                            viewModel.aboutDraft = viewModel.aboutText
-                            viewModel.isEditingAboutText = true
+                            viewModel.beginAboutEdit() // Uses synchronized helper method
                         } label: {
                             Image(systemName: "pencil.circle.fill")
                                 .font(.title2)
@@ -75,6 +73,9 @@ struct AboutUsView: View {
                     }
                     .padding(.horizontal, ADGTheme.pagePadding)
                 }
+                
+                // MARK: - Reach Out & Feedback Component
+                AboutUsFooterView(viewModel: viewModel, currentUserID: nil)
             }
             .padding(.bottom, 90)
         }
@@ -96,7 +97,6 @@ struct AboutUsView: View {
                 .padding(.bottom, 24)
             }
         }
-        // 🔘 Removed .navigationTitle and .navigationBarTitleDisplayMode from main content view tree
         .sheet(isPresented: $viewModel.isEditing) {
             BoardMemberEditor(viewModel: viewModel)
         }
@@ -136,6 +136,96 @@ struct AboutUsView: View {
         } else {
             expandedPreviousMemberIDs.insert(id)
         }
+    }
+}
+
+// MARK: - Reusable Footer View Component
+
+private struct AboutUsFooterView: View {
+    @Bindable var viewModel: BoardViewModel
+    var currentUserID: UUID?
+    
+    var body: some View {
+        VStack(spacing: 28) {
+            Divider()
+                .padding(.vertical, 8)
+            
+            // MARK: Contact Details
+            VStack(spacing: 14) {
+                Text("Get in Touch")
+                    .font(.title3.bold())
+                    .tracking(0.2)
+                    .foregroundStyle(ADGTheme.ink)
+                
+                Link(destination: URL(string: "mailto:adgmitmanipal@gmail.com")!) {
+                    Label("adgmitmanipal@gmail.com", systemImage: "envelope.fill")
+                        .font(.body.weight(.medium))
+                        .foregroundColor(.accentColor)
+                }
+                
+                Link(destination: URL(string: "tel:+91 9831579016")!) {
+                    Label("+91 98315 79016", systemImage: "phone.fill")
+                        .font(.body.weight(.medium))
+                        .foregroundColor(ADGTheme.ink.opacity(0.8))
+                }
+            }
+            
+            // MARK: Application Feedback Card
+            VStack(alignment: .leading, spacing: 14) {
+                Text("App Feedback")
+                    .font(.headline)
+                    .foregroundStyle(ADGTheme.ink)
+                
+                Text("Notice a bug or have a suggestion? Share it here and our technical team will review it directly inside the control engine.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .lineSpacing(3)
+                
+                TextField("Your Email Address", text: $viewModel.feedbackEmail)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .disabled(viewModel.isSubmittingFeedback)
+                
+                TextField("Write your message...", text: $viewModel.feedbackMessage, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...6)
+                    .disabled(viewModel.isSubmittingFeedback)
+                
+                if let success = viewModel.feedbackSuccessMessage {
+                    Text(success)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.green)
+                        .transition(.opacity)
+                }
+                
+                Button {
+                    Task {
+                        await viewModel.submitFeedback(currentUserID: currentUserID)
+                    }
+                } label: {
+                    HStack {
+                        Spacer()
+                        if viewModel.isSubmittingFeedback {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text("Submit Feedback")
+                                .bold()
+                        }
+                        Spacer()
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(ADGTheme.ink)
+                .foregroundStyle(ADGTheme.paper)
+                .disabled(viewModel.feedbackEmail.isEmpty || viewModel.feedbackMessage.isEmpty || viewModel.isSubmittingFeedback)
+            }
+            .padding(20)
+            .background(ADGTheme.surface)
+            .cornerRadius(12)
+        }
+        .padding(.horizontal, ADGTheme.pagePadding)
     }
 }
 
@@ -306,6 +396,7 @@ private struct PreviousBoardMemberRow: View {
 private struct BoardMemberEditor: View {
     @Bindable var viewModel: BoardViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var localPreviewImage: UIImage? = nil
 
     var body: some View {
         NavigationStack {
@@ -326,9 +417,20 @@ private struct BoardMemberEditor: View {
                     optionalField("LinkedIn URL", value: $viewModel.draft.linkedInURL)
                 }
 
-                Section("Headshot") {
+                Section("Headshot Media (Admin Only)") {
+                    if let localPreviewImage {
+                        Image(uiImage: localPreviewImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else if let posterURL = viewModel.draft.headshotURL {
+                        RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
+                            .frame(height: 150)
+                    }
+                    
                     PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
-                        Label("Choose Headshot", systemImage: "photo")
+                        Label(localPreviewImage == nil ? "Choose Headshot" : "Change Headshot", systemImage: "photo.on.rectangle")
                     }
                 }
             }
@@ -342,6 +444,16 @@ private struct BoardMemberEditor: View {
                         Task {
                             await viewModel.save()
                             dismiss()
+                        }
+                    }
+                }
+            }
+            .onChange(of: viewModel.selectedPhoto) { _, newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            self.localPreviewImage = image
                         }
                     }
                 }

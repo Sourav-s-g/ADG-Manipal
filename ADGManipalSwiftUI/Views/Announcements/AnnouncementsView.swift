@@ -6,40 +6,41 @@ struct AnnouncementsView: View {
     @State private var viewModel = AnnouncementsViewModel()
 
     var body: some View {
-            ZStack(alignment: .bottomTrailing) {
-                ScrollView {
-                    LazyVStack(spacing: 18) {
-                        ForEach(viewModel.announcements) { announcement in
-                            AnnouncementCard(
-                                announcement: announcement,
-                                isAdmin: session.isAdminAuthenticated,
-                                onEdit: { viewModel.beginEdit(announcement) },
-                                onDelete: { Task { await viewModel.delete(announcement) } }
-                            )
-                        }
+        ZStack(alignment: .bottomTrailing) {
+            ScrollView {
+                // Fixed: Explicit container padded iteration to anchor identity states
+                LazyVStack(spacing: 18) {
+                    ForEach(viewModel.announcements, id: \.id) { announcement in
+                        AnnouncementCard(
+                            announcement: announcement,
+                            isAdmin: session.isAdminAuthenticated,
+                            onEdit: { viewModel.beginEdit(announcement) },
+                            onDelete: { Task { await viewModel.delete(announcement) } }
+                        )
                     }
-                    .padding(ADGTheme.pagePadding)
                 }
-                .task { await viewModel.load() }
-                .refreshable { await viewModel.load() }
+                .padding(ADGTheme.pagePadding)
+            }
+            .task { await viewModel.load() }
+            .refreshable { await viewModel.load() }
 
-                if session.isAdminAuthenticated {
-                    Button {
-                        viewModel.beginCreate()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title2.weight(.bold))
-                            .frame(width: 56, height: 56)
-                            .foregroundStyle(ADGTheme.paper)
-                            .background(ADGTheme.ink)
-                            .clipShape(Circle())
-                    }
-                    .padding(24)
+            if session.isAdminAuthenticated {
+                Button {
+                    viewModel.beginCreate()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2.weight(.bold))
+                        .frame(width: 56, height: 56)
+                        .foregroundStyle(ADGTheme.paper)
+                        .background(ADGTheme.ink)
+                        .clipShape(Circle())
                 }
+                .padding(24)
             }
-            .sheet(isPresented: $viewModel.isEditing) {
-                AnnouncementEditor(viewModel: viewModel)
-            }
+        }
+        .sheet(isPresented: $viewModel.isEditing) {
+            AnnouncementEditor(viewModel: viewModel)
+        }
     }
 }
 
@@ -68,7 +69,7 @@ private struct AnnouncementCard: View {
                         Text(announcement.title)
                             .font(.title3.bold())
                             .tracking(0.2)
-                                        }
+                    }
                     Text(announcement.publishedAt, style: .date)
                         .font(.caption)
                         .tracking(0.8)
@@ -79,12 +80,8 @@ private struct AnnouncementCard: View {
 
                 if isAdmin {
                     HStack {
-                        Button(action: onEdit) {
-                            Image(systemName: "pencil")
-                        }
-                        Button(role: .destructive, action: onDelete) {
-                            Image(systemName: "trash")
-                        }
+                        Button(action: onEdit) { Image(systemName: "pencil") }
+                        Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
                     }
                     .buttonStyle(.borderless)
                 }
@@ -110,6 +107,9 @@ private struct AnnouncementCard: View {
 private struct AnnouncementEditor: View {
     @Bindable var viewModel: AnnouncementsViewModel
     @Environment(\.dismiss) private var dismiss
+    
+    // 📸 Local UI preview container state
+    @State private var localPreviewImage: UIImage? = nil
 
     var body: some View {
         NavigationStack {
@@ -126,13 +126,21 @@ private struct AnnouncementEditor: View {
                     Stepper("Priority \(viewModel.draft.priority)", value: $viewModel.draft.priority, in: 0...10)
                 }
 
-                Section("Poster") {
-                    PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
-                        Label("Choose Poster", systemImage: "photo")
+                Section("Poster Media (Admin Only)") {
+                    // Structural preview layer verification before background processing
+                    if let localPreviewImage {
+                        Image(uiImage: localPreviewImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 180)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    } else if let posterURL = viewModel.draft.posterURL {
+                        RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
+                            .frame(height: 180)
                     }
-                    if let posterURL = viewModel.draft.posterURL {
-                        Text(posterURL)
-                            .font(.caption)
+
+                    PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
+                        Label(localPreviewImage == nil ? "Choose Poster" : "Change Poster", systemImage: "photo.on.rectangle")
                     }
                 }
             }
@@ -146,6 +154,17 @@ private struct AnnouncementEditor: View {
                         Task {
                             await viewModel.save()
                             dismiss()
+                        }
+                    }
+                }
+            }
+            // 🔄 Transform asset selection into local runtime rendering states safely
+            .onChange(of: viewModel.selectedPhoto) { _, newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            self.localPreviewImage = image
                         }
                     }
                 }

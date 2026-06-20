@@ -36,34 +36,35 @@ struct RegistrationSheet: View {
 
                 Section("Details") {
                     if event.requiredFields.phone {
-                        customField("Phone", key: "phone")
+                        customField("Phone", key: "phone", keyboard: .phonePad)
                     }
                     if event.requiredFields.registrationNumber {
-                        customField("Registration Number", key: "registration_number")
+                        customField("Registration Number", key: "registration_number", keyboard: .numberPad)
                     }
                     if event.requiredFields.department {
                         customField("Department", key: "department")
                     }
                     if event.requiredFields.year {
-                        customField("Year", key: "year")
+                        customField("Year", key: "year", keyboard: .numberPad)
                     }
                     if event.requiredFields.notes {
                         customField("Notes", key: "notes", axis: .vertical)
                     }
                 }
             }
+            .disabled(isSubmitting)
             .navigationTitle("Register")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(isSubmitting ? "Submitting" : "Submit") {
-                        Task {
-                            isSubmitting = true
-                            await onSubmit(name, email, inputs)
-                            isSubmitting = false
-                            dismiss()
+                    Button(action: submitForm) {
+                        if isSubmitting {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else {
+                            Text("Submit")
                         }
                     }
                     .disabled(!isValid || isSubmitting)
@@ -72,15 +73,37 @@ struct RegistrationSheet: View {
         }
     }
 
+    // MARK: - Dynamic Validation Logic
     private var isValid: Bool {
-        !name.isEmpty && !email.isEmpty
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return false }
+        
+        if event.requiredFields.phone && (inputs["phone"] ?? "").isEmpty { return false }
+        if event.requiredFields.registrationNumber && (inputs["registration_number"] ?? "").isEmpty { return false }
+        if event.requiredFields.department && (inputs["department"] ?? "").isEmpty { return false }
+        if event.requiredFields.year && (inputs["year"] ?? "").isEmpty { return false }
+        if event.requiredFields.notes && (inputs["notes"] ?? "").isEmpty { return false }
+        
+        return true
     }
 
+    // MARK: - Action Methods
+    private func submitForm() {
+        Task {
+            isSubmitting = true
+            await onSubmit(name, email, inputs)
+            isSubmitting = false
+            dismiss()
+        }
+    }
+
+    // MARK: - Helper Builder View
     @ViewBuilder
-    private func customField(_ label: String, key: String, axis: Axis = .horizontal) -> some View {
+    private func customField(_ label: String, key: String, axis: Axis = .horizontal, keyboard: UIKeyboardType = .default) -> some View {
         TextField(label, text: Binding(
             get: { inputs[key] ?? "" },
             set: { inputs[key] = $0 }
         ), axis: axis)
+        .keyboardType(keyboard)
     }
 }

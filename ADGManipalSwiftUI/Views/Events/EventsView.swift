@@ -54,11 +54,9 @@ struct EventsView: View {
             // MARK: - Content Switcher
             if viewModel.selectedSegment == .upcoming {
                 if viewModel.upcomingEvents.isEmpty {
-                    GeometryReader { geometry in
-                        NoUpcomingEventsView()
-                            .frame(width: geometry.size.width, height: max(400, geometry.size.height - 100))
-                    }
-                    .frame(minHeight: 450)
+                    NoUpcomingEventsView()
+                        .frame(minHeight: 400)
+                        .padding(.top, 40)
                 } else {
                     LazyVStack(spacing: 18) {
                         ForEach(viewModel.upcomingEvents) { event in
@@ -89,7 +87,6 @@ struct EventsView: View {
                 .padding(ADGTheme.pagePadding)
             }
         }
-        // Removed .navigationTitle and .navigationBarTitleDisplayMode to clear out navigation stack logs
         .task { await viewModel.load(userID: session.userID) }
         .refreshable { await viewModel.load(userID: session.userID) }
         .onChange(of: session.userID) { _, userID in
@@ -201,11 +198,12 @@ private struct UpcomingEventCard: View {
                 Spacer()
 
                 if isAdmin {
-                    HStack {
+                    HStack(spacing: 12) {
                         Button(action: onRoster) { Image(systemName: "list.bullet.clipboard") }
                         Button(action: onEdit) { Image(systemName: "pencil") }
                         Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
                     }
+                    .font(.body)
                 }
             }
 
@@ -230,10 +228,11 @@ private struct UpcomingEventCard: View {
                     .foregroundStyle(ADGTheme.paper)
                     .background(buttonBackground)
             }
-            .disabled(!event.isRegistrationOpen || isRegistered)
+            .disabled(!event.registrationEnabled || isRegistered)
         }
         .padding(16)
         .background(ADGTheme.surface)
+        .cornerRadius(12)
     }
 
     private var registerButtonTitle: String {
@@ -243,7 +242,7 @@ private struct UpcomingEventCard: View {
 
     private var buttonBackground: Color {
         if isRegistered { return .green }
-        return event.isRegistrationOpen ? ADGTheme.ink : .gray
+        return event.registrationEnabled ? ADGTheme.ink : .gray
     }
 }
 
@@ -414,6 +413,7 @@ private struct EventEditor: View {
                                 .tag(method)
                         }
                     }
+                    
                     TextField("External URL", text: Binding(
                         get: { viewModel.draft.registrationURL ?? "" },
                         set: { viewModel.draft.registrationURL = $0.isEmpty ? nil : $0 }

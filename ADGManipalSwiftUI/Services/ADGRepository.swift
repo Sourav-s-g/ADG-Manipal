@@ -21,6 +21,21 @@ actor ADGRepository {
             .value
     }
     
+    // MARK: - App Feedback Operation
+        /// Pushes user feedback records directly to the backend database table
+        func submitFeedback(email: String, message: String, userID: UUID?) async throws {
+            let feedbackDTO = FeedbackUploadDTO(
+                email: email,
+                message: message,
+                userId: userID
+            )
+            
+            try await client
+                .from("app_feedback")
+                .insert(feedbackDTO)
+                .execute()
+        }
+    
     func fetchAboutText() async throws -> String {
         do {
             let config: AppConfig = try await client
@@ -176,5 +191,20 @@ private extension UIImage {
                 )
             )
         }
+    }
+}
+
+// MARK: - Feedback Data Transfer Object
+private struct FeedbackUploadDTO: Encodable {
+    let email: String
+    let message: String
+    
+    /// Matches database layout naming conventions seamlessly via custom coding keys
+    let userId: UUID?
+
+    enum CodingKeys: String, CodingKey {
+        case email
+        case message
+        case userId = "user_id"
     }
 }
