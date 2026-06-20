@@ -8,111 +8,135 @@ struct EventsView: View {
     @State private var showsSignInSheet = false
 
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                ScrollView {
-                    Picker("Event Segment", selection: $viewModel.selectedSegment) {
-                        ForEach(EventSegment.allCases) { segment in
-                            Text(segment.rawValue).tag(segment)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal, ADGTheme.pagePadding)
-                    .padding(.top, 16)
-
-                    if viewModel.selectedSegment == .upcoming {
-                        LazyVStack(spacing: 18) {
-                            ForEach(viewModel.upcomingEvents) { event in
-                                UpcomingEventCard(
-                                    event: event,
-                                    isAdmin: session.isAdminAuthenticated,
-                                    isRegistered: viewModel.isRegistered(for: event),
-                                    onRegister: { handleRegistration(event) },
-                                    onEdit: { viewModel.beginEdit(event) },
-                                    onDelete: { Task { await viewModel.delete(event) } },
-                                    onRoster: { Task { await viewModel.openRoster(for: event) } }
-                                )
-                            }
-                        }
-                        .padding(ADGTheme.pagePadding)
-                    } else {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 155), spacing: 14)], spacing: 14) {
-                            ForEach(viewModel.pastEvents) { event in
-                                Button {
-                                    viewModel.selectedPastEvent = event
-                                } label: {
-                                    PastEventTile(event: event)
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(ADGTheme.pagePadding)
-                    }
+        ScrollView {
+            // MARK: - Search & Admin Row
+            HStack(spacing: 12) {
+                // Custom Search Bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundStyle(.secondary)
+                    
+                    TextField("Search events", text: $viewModel.searchText)
+                        .textFieldStyle(.plain)
                 }
-                .searchable(text: $viewModel.searchText, prompt: "Search events")
-                .task { await viewModel.load(userID: session.userID) }
-                .refreshable { await viewModel.load(userID: session.userID) }
-                .onChange(of: session.userID) { _, userID in
-                    Task { await viewModel.refreshRegistrationState(userID: userID) }
-                }
-
+                .padding(.horizontal, 12)
+                .frame(height: 50)
+                .background(.ultraThinMaterial)
+                .cornerRadius(20)
+                
+                // Inline Admin Add Button
                 if session.isAdminAuthenticated {
                     Button {
                         viewModel.beginCreate()
                     } label: {
                         Image(systemName: "plus")
-                            .font(.title2.weight(.bold))
-                            .frame(width: 56, height: 56)
+                            .font(.body.weight(.bold))
+                            .frame(width: 50, height: 50)
                             .foregroundStyle(ADGTheme.paper)
                             .background(ADGTheme.ink)
-                            .clipShape(Circle())
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
                     }
-                    .padding(24)
                 }
             }
-            .navigationTitle("Events")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(item: $viewModel.selectedEvent) { event in
-                RegistrationSheet(event: event, initialEmail: session.userEmail ?? "") { name, email, inputs in
-                    guard let userID = session.userID else { return }
-                    await viewModel.submitRegistration(event: event, userID: userID, name: name, email: email, inputs: inputs)
+            .padding(.horizontal, ADGTheme.pagePadding)
+            .padding(.top, 16)
+            
+            // MARK: - Segmented Control
+            Picker("Event Segment", selection: $viewModel.selectedSegment) {
+                ForEach(EventSegment.allCases) { segment in
+                    Text(segment.rawValue).tag(segment)
                 }
             }
-            .sheet(isPresented: $showsSignInSheet) {
-                AdminLoginSheet()
-                    .presentationDetents([.height(430)])
-                    .presentationDragIndicator(.visible)
-            }
-            .sheet(item: $safariURL) { url in
-                SafariView(url: url.url)
-            }
-            .sheet(isPresented: $viewModel.isEditing) {
-                EventEditor(viewModel: viewModel)
-            }
-            .sheet(isPresented: $viewModel.isShowingRoster) {
-                RosterView(event: viewModel.rosterEvent, registrations: viewModel.roster)
-            }
-            .sheet(item: $viewModel.selectedPastEvent) { event in
-                PastEventDetailPanel(
-                    event: event,
-                    isAdmin: session.isAdminAuthenticated,
-                    onRoster: { Task { await viewModel.openRoster(for: event) } }
-                )
-            }
-            .alert("Sign in to register", isPresented: Binding(
-                get: { viewModel.requiresSignInForEvent != nil },
-                set: { if !$0 { viewModel.requiresSignInForEvent = nil } }
-            )) {
-                Button("Sign In") {
-                    viewModel.requiresSignInForEvent = nil
-                    showsSignInSheet = true
+            .pickerStyle(.segmented)
+            .padding(.horizontal, ADGTheme.pagePadding)
+            .padding(.top, 16)
+
+            // MARK: - Content Switcher
+            if viewModel.selectedSegment == .upcoming {
+                if viewModel.upcomingEvents.isEmpty {
+                    GeometryReader { geometry in
+                        NoUpcomingEventsView()
+                            .frame(width: geometry.size.width, height: max(400, geometry.size.height - 100))
+                    }
+                    .frame(minHeight: 450)
+                } else {
+                    LazyVStack(spacing: 18) {
+                        ForEach(viewModel.upcomingEvents) { event in
+                            UpcomingEventCard(
+                                event: event,
+                                isAdmin: session.isAdminAuthenticated,
+                                isRegistered: viewModel.isRegistered(for: event),
+                                onRegister: { handleRegistration(event) },
+                                onEdit: { viewModel.beginEdit(event) },
+                                onDelete: { Task { await viewModel.delete(event) } },
+                                onRoster: { Task { await viewModel.openRoster(for: event) } }
+                            )
+                        }
+                    }
+                    .padding(ADGTheme.pagePadding)
                 }
-                Button("Cancel", role: .cancel) {
-                    viewModel.requiresSignInForEvent = nil
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 155), spacing: 14)], spacing: 14) {
+                    ForEach(viewModel.pastEvents) { event in
+                        Button {
+                            viewModel.selectedPastEvent = event
+                        } label: {
+                            PastEventTile(event: event)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
-            } message: {
-                Text("Create or sign in to your student account before registering for an event.")
+                .padding(ADGTheme.pagePadding)
             }
+        }
+        // Removed .navigationTitle and .navigationBarTitleDisplayMode to clear out navigation stack logs
+        .task { await viewModel.load(userID: session.userID) }
+        .refreshable { await viewModel.load(userID: session.userID) }
+        .onChange(of: session.userID) { _, userID in
+            Task { await viewModel.refreshRegistrationState(userID: userID) }
+        }
+        
+        // MARK: - Presentation Sheets & Overlays
+        .sheet(item: $viewModel.selectedEvent) { event in
+            RegistrationSheet(event: event, initialEmail: session.userEmail ?? "") { name, email, inputs in
+                guard let userID = session.userID else { return }
+                await viewModel.submitRegistration(event: event, userID: userID, name: name, email: email, inputs: inputs)
+            }
+        }
+        .sheet(isPresented: $showsSignInSheet) {
+            AdminLoginSheet()
+                .presentationDetents([.height(430)])
+                .presentationDragIndicator(.visible)
+        }
+        .sheet(item: $safariURL) { url in
+            SafariView(url: url.url)
+        }
+        .sheet(isPresented: $viewModel.isEditing) {
+            EventEditor(viewModel: viewModel)
+        }
+        .sheet(isPresented: $viewModel.isShowingRoster) {
+            RosterView(event: viewModel.rosterEvent, registrations: viewModel.roster)
+        }
+        .sheet(item: $viewModel.selectedPastEvent) { event in
+            PastEventDetailPanel(
+                event: event,
+                isAdmin: session.isAdminAuthenticated,
+                onRoster: { Task { await viewModel.openRoster(for: event) } }
+            )
+        }
+        .alert("Sign in to register", isPresented: Binding(
+            get: { viewModel.requiresSignInForEvent != nil },
+            set: { if !$0 { viewModel.requiresSignInForEvent = nil } }
+        )) {
+            Button("Sign In") {
+                viewModel.requiresSignInForEvent = nil
+                showsSignInSheet = true
+            }
+            Button("Cancel", role: .cancel) {
+                viewModel.requiresSignInForEvent = nil
+            }
+        } message: {
+            Text("Create or sign in to your student account before registering for an event.")
         }
     }
 
@@ -133,6 +157,8 @@ struct EventsView: View {
         }
     }
 }
+
+// MARK: - Subviews
 
 private struct UpcomingEventCard: View {
     var event: Event
@@ -218,6 +244,38 @@ private struct UpcomingEventCard: View {
     private var buttonBackground: Color {
         if isRegistered { return .green }
         return event.isRegistrationOpen ? ADGTheme.ink : .gray
+    }
+}
+
+private struct NoUpcomingEventsView: View {
+    var body: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            
+            Text("🎉")
+                .font(.system(size: 60))
+                .phaseAnimator([false, true]) { content, phase in
+                    content
+                        .scaleEffect(phase ? 1.1 : 1.0)
+                        .rotationEffect(.degrees(phase ? 5 : -5))
+                } animation: { phase in
+                    .easeInOut(duration: 1.5).repeatForever(autoreverses: true)
+                }
+            
+            VStack(spacing: 6) {
+                Text("No upcoming events yet")
+                    .font(.headline)
+                    .foregroundStyle(ADGTheme.ink)
+                
+                Text("Check back later or explore our past events!")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.horizontal, 32)
+            
+            Spacer()
+        }
     }
 }
 
@@ -342,6 +400,8 @@ private struct EventEditor: View {
                         Text(coverImageURL)
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
 

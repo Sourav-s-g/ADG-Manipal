@@ -6,7 +6,6 @@ struct AnnouncementsView: View {
     @State private var viewModel = AnnouncementsViewModel()
 
     var body: some View {
-        NavigationStack {
             ZStack(alignment: .bottomTrailing) {
                 ScrollView {
                     LazyVStack(spacing: 18) {
@@ -38,12 +37,9 @@ struct AnnouncementsView: View {
                     .padding(24)
                 }
             }
-            .navigationTitle("Updates")
-            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $viewModel.isEditing) {
                 AnnouncementEditor(viewModel: viewModel)
             }
-        }
     }
 }
 

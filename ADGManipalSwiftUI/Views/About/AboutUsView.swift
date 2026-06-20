@@ -8,121 +8,120 @@ struct AboutUsView: View {
     @State private var expandedPreviousMemberIDs: Set<UUID> = []
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(alignment: .top) {
-                        Text(viewModel.aboutText)
-                            .font(.body)
-                            .lineSpacing(5)
-                            .foregroundStyle(ADGTheme.ink.opacity(0.75))
-                            .animation(.default, value: viewModel.aboutText) // Clean fade upon dynamic update
+        // 🔘 Removed NavigationStack wrapper to eliminate UIKit layout collisions
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    Text(viewModel.aboutText)
+                        .font(.body)
+                        .lineSpacing(5)
+                        .foregroundStyle(ADGTheme.ink.opacity(0.75))
+                        .animation(.default, value: viewModel.aboutText) // Clean fade upon dynamic update
+                    
+                    if session.isAdminAuthenticated {
+                        Spacer()
                         
-                        if session.isAdminAuthenticated {
-                            Spacer()
-                            
-                            Button {
-                                viewModel.aboutDraft = viewModel.aboutText
-                                viewModel.isEditingAboutText = true
-                            } label: {
-                                Image(systemName: "pencil.circle.fill")
-                                    .font(.title2)
-                                    .foregroundStyle(ADGTheme.ink)
-                            }
-                            .buttonStyle(.plain)
+                        Button {
+                            viewModel.aboutDraft = viewModel.aboutText
+                            viewModel.isEditingAboutText = true
+                        } label: {
+                            Image(systemName: "pencil.circle.fill")
+                                .font(.title2)
+                                .foregroundStyle(ADGTheme.ink)
                         }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .padding(.horizontal, ADGTheme.pagePadding)
+            .padding(.top, 18)
+            
+            VStack(alignment: .leading, spacing: 24) {
+                Text("Core Board")
+                    .font(.largeTitle.bold())
+                    .tracking(0.3)
+                    .padding(.horizontal, ADGTheme.pagePadding)
+                    .padding(.top, 18)
+
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 24) {
+                    ForEach(viewModel.currentMembers) { member in
+                        BoardMemberTile(
+                            member: member,
+                            isAdmin: session.isAdminAuthenticated,
+                            onSelect: { viewModel.selectedMember = member },
+                            onEdit: { viewModel.beginEdit(member) },
+                            onDelete: { Task { await viewModel.delete(member) } }
+                        )
                     }
                 }
                 .padding(.horizontal, ADGTheme.pagePadding)
-                .padding(.top, 18)
                 
-                
-                VStack(alignment: .leading, spacing: 24) {
-                    Text("Core Board")
-                        .font(.largeTitle.bold())
-                        .tracking(0.3)
-                        .padding(.horizontal, ADGTheme.pagePadding)
-                        .padding(.top, 18)
+                if !viewModel.previousMembers.isEmpty {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("Previous Boards")
+                            .font(.title.bold())
+                            .tracking(0.3)
 
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16)], spacing: 24) {
-                        ForEach(viewModel.currentMembers) { member in
-                            BoardMemberTile(
+                        ForEach(viewModel.previousMembers) { member in
+                            PreviousBoardMemberRow(
                                 member: member,
+                                isExpanded: expandedPreviousMemberIDs.contains(member.id),
                                 isAdmin: session.isAdminAuthenticated,
-                                onSelect: { viewModel.selectedMember = member },
+                                onToggle: { togglePreviousMember(member.id) },
                                 onEdit: { viewModel.beginEdit(member) },
                                 onDelete: { Task { await viewModel.delete(member) } }
                             )
                         }
                     }
                     .padding(.horizontal, ADGTheme.pagePadding)
-                    
-                    if !viewModel.previousMembers.isEmpty {
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text("Previous Boards")
-                                .font(.title.bold())
-                                .tracking(0.3)
-
-                            ForEach(viewModel.previousMembers) { member in
-                                PreviousBoardMemberRow(
-                                    member: member,
-                                    isExpanded: expandedPreviousMemberIDs.contains(member.id),
-                                    isAdmin: session.isAdminAuthenticated,
-                                    onToggle: { togglePreviousMember(member.id) },
-                                    onEdit: { viewModel.beginEdit(member) },
-                                    onDelete: { Task { await viewModel.delete(member) } }
-                                )
-                            }
-                        }
-                        .padding(.horizontal, ADGTheme.pagePadding)
-                    }
-                }
-                .padding(.bottom, 90)
-            }
-            .task { await viewModel.load() }
-            .refreshable { await viewModel.load() }
-            .safeAreaInset(edge: .bottom, alignment: .trailing) {
-                if session.isAdminAuthenticated {
-                    Button {
-                        viewModel.beginCreate()
-                    } label: {
-                        Image(systemName: "plus")
-                            .font(.title2.weight(.bold))
-                            .frame(width: 56, height: 56)
-                            .foregroundStyle(ADGTheme.paper)
-                            .background(ADGTheme.ink)
-                            .clipShape(Circle())
-                    }
-                    .padding(.trailing, 24)
-                    .padding(.bottom, 24)
                 }
             }
-            .navigationTitle("About Us")
-            .navigationBarTitleDisplayMode(.inline)
-            .sheet(isPresented: $viewModel.isEditing) {
-                BoardMemberEditor(viewModel: viewModel)
+            .padding(.bottom, 90)
+        }
+        .task { await viewModel.load() }
+        .refreshable { await viewModel.load() }
+        .safeAreaInset(edge: .bottom, alignment: .trailing) {
+            if session.isAdminAuthenticated {
+                Button {
+                    viewModel.beginCreate()
+                } label: {
+                    Image(systemName: "plus")
+                        .font(.title2.weight(.bold))
+                        .frame(width: 56, height: 56)
+                        .foregroundStyle(ADGTheme.paper)
+                        .background(ADGTheme.ink)
+                        .clipShape(Circle())
+                }
+                .padding(.trailing, 24)
+                .padding(.bottom, 24)
             }
-            .sheet(item: $viewModel.selectedMember) { member in
-                BoardMemberDetail(member: member)
-            }
-            .sheet(isPresented: $viewModel.isEditingAboutText) {
-                NavigationStack {
-                    Form {
-                        Section("Edit Community Description") {
-                            TextField("About Us Text", text: $viewModel.aboutDraft, axis: .vertical)
-                                .lineLimit(6...12)
-                        }
+        }
+        // 🔘 Removed .navigationTitle and .navigationBarTitleDisplayMode from main content view tree
+        .sheet(isPresented: $viewModel.isEditing) {
+            BoardMemberEditor(viewModel: viewModel)
+        }
+        .sheet(item: $viewModel.selectedMember) { member in
+            BoardMemberDetail(member: member)
+        }
+        .sheet(isPresented: $viewModel.isEditingAboutText) {
+            NavigationStack {
+                Form {
+                    Section("Edit Community Description") {
+                        TextField("About Us Text", text: $viewModel.aboutDraft, axis: .vertical)
+                            .lineLimit(6...12)
                     }
-                    .navigationTitle("About Us")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { viewModel.isEditingAboutText = false }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Save") {
-                                Task { await viewModel.saveAboutText() }
+                }
+                .navigationTitle("About Us")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") { viewModel.isEditingAboutText = false }
+                    }
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Save") {
+                            Task {
+                                await viewModel.saveAboutText()
+                                viewModel.isEditingAboutText = false
                             }
                         }
                     }
@@ -139,6 +138,8 @@ struct AboutUsView: View {
         }
     }
 }
+
+// MARK: - Secondary Subviews
 
 private struct BoardMemberTile: View {
     var member: BoardMember
@@ -311,6 +312,7 @@ private struct BoardMemberEditor: View {
             Form {
                 Section("Profile") {
                     TextField("Name", text: $viewModel.draft.name)
+                        .autocorrectionDisabled()
                     TextField("Role", text: $viewModel.draft.role)
                     TextField("Domain", text: $viewModel.draft.domain)
                     TextField("Bio", text: $viewModel.draft.bio, axis: .vertical)

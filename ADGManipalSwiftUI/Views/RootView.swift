@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 
 struct RootView: View {
     @Environment(ADGSession.self) private var session
@@ -12,21 +13,24 @@ struct RootView: View {
                 isAdmin: session.isAdminAuthenticated,
                 onAccountTap: { showsAdminLogin = true }
             )
-                .onLongPressGesture(minimumDuration: 3.0) {
-                    showsAdminLogin = true
-                }
+            .onLongPressGesture(minimumDuration: 3.0) {
+                showsAdminLogin = true
+            }
 
             ADGSegmentedTabs(selectedTab: $selectedTab)
                 .padding(.horizontal, ADGTheme.pagePadding)
                 .padding(.top, 12)
 
             TabView(selection: $selectedTab) {
+                // Tab 1: Updates
                 AnnouncementsView()
                     .tag(ADGTab.announcements)
 
+                // Tab 2: Events
                 EventsView()
                     .tag(ADGTab.events)
 
+                // Tab 3: About Us
                 AboutUsView()
                     .tag(ADGTab.about)
             }
