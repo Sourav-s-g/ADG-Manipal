@@ -16,7 +16,9 @@ final class ADGSession {
 
     init(client: SupabaseClient = SupabaseProvider.shared) {
         self.client = client
-        Task { await refreshSession() }
+        Task { @MainActor in
+            await self.refreshSession()
+        }
     }
 
     func refreshSession() async {
@@ -63,18 +65,17 @@ final class ADGSession {
     }
 
     private func apply(user: User) {
-        userID = user.id
-        userEmail = user.email
-        isAuthenticated = true
-
         let appRole = user.appMetadata["role"]?.stringValue
         let userRole = user.userMetadata["role"]?.stringValue
         let appIsAdmin = user.appMetadata["is_admin"]?.boolValue ?? false
         let userIsAdmin = user.userMetadata["is_admin"]?.boolValue ?? false
         let isAdmin = appRole == "admin" || userRole == "admin" || appIsAdmin || userIsAdmin
 
-        isAdminAuthenticated = isAdmin
+        userID = user.id
+        userEmail = user.email
         adminEmail = isAdmin ? user.email : nil
+        isAdminAuthenticated = isAdmin
+        isAuthenticated = true
     }
 
     private func clearUser() {
@@ -84,4 +85,6 @@ final class ADGSession {
         isAuthenticated = false
         isAdminAuthenticated = false
     }
+    
+    
 }

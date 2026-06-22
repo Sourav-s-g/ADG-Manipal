@@ -1,5 +1,6 @@
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct AnnouncementsView: View {
     @Environment(ADGSession.self) private var session
@@ -15,7 +16,7 @@ struct AnnouncementsView: View {
                             announcement: announcement,
                             isAdmin: session.isAdminAuthenticated,
                             onEdit: { viewModel.beginEdit(announcement) },
-                            onDelete: { Task { await viewModel.delete(announcement) } }
+                            onDelete: { Task { @MainActor in await viewModel.delete(announcement) } }
                         )
                     }
                 }
@@ -35,6 +36,8 @@ struct AnnouncementsView: View {
                         .background(ADGTheme.ink)
                         .clipShape(Circle())
                 }
+                .accessibilityLabel("Create announcement")
+                .accessibilityHint("Opens the announcement editor.")
                 .padding(24)
             }
         }
@@ -54,6 +57,7 @@ private struct AnnouncementCard: View {
         VStack(alignment: .leading, spacing: 14) {
             if let posterURL = announcement.posterURL {
                 RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
+                    .accessibilityHidden(true)
             }
 
             HStack(alignment: .firstTextBaseline) {
@@ -66,22 +70,29 @@ private struct AnnouncementCard: View {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Image(systemName: "megaphone.fill")
                             .font(.headline)
+                            .accessibilityHidden(true)
                         Text(announcement.title)
                             .font(.title3.bold())
                             .tracking(0.2)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Text(announcement.publishedAt, style: .date)
                         .font(.caption)
                         .tracking(0.8)
                         .textCase(.uppercase)
                 }
+                .accessibilityElement(children: .combine)
 
                 Spacer()
 
                 if isAdmin {
                     HStack {
                         Button(action: onEdit) { Image(systemName: "pencil") }
+                            .accessibilityLabel("Edit announcement")
+                            .accessibilityHint("Opens the editor for \(announcement.title).")
                         Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
+                            .accessibilityLabel("Delete announcement")
+                            .accessibilityHint("Deletes \(announcement.title).")
                     }
                     .buttonStyle(.borderless)
                 }
@@ -90,6 +101,7 @@ private struct AnnouncementCard: View {
             Text(announcement.body)
                 .font(.body)
                 .lineSpacing(5)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(announcement.isPinned ? 18 : 0)
         .background(announcement.isPinned ? ADGTheme.surface : ADGTheme.paper)
@@ -134,9 +146,11 @@ private struct AnnouncementEditor: View {
                             .scaledToFill()
                             .frame(height: 180)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .accessibilityLabel("Selected poster preview")
                     } else if let posterURL = viewModel.draft.posterURL {
                         RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
                             .frame(height: 180)
+                            .accessibilityLabel("Current poster preview")
                     }
 
                     PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct AdminLoginSheet: View {
     @Environment(ADGSession.self) private var session
@@ -14,6 +15,7 @@ struct AdminLoginSheet: View {
             Text(session.isAuthenticated ? "Account" : "Sign In")
                 .font(.largeTitle.bold())
                 .tracking(0.3)
+                .fixedSize(horizontal: false, vertical: true)
 
             if session.isAuthenticated {
                 signedInContent
@@ -30,10 +32,13 @@ struct AdminLoginSheet: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text(session.userEmail ?? "Signed in")
                     .font(.headline)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(session.isAdminAuthenticated ? "Admin mode active" : "Student account")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .accessibilityElement(children: .combine)
 
             Button {
                 Task {
@@ -48,10 +53,11 @@ struct AdminLoginSheet: View {
                     .tracking(1.1)
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .padding(.vertical, 14)
                     .foregroundStyle(ADGTheme.paper)
                     .background(ADGTheme.ink)
             }
+            .accessibilityHint("Signs out of the current account.")
         }
     }
 
@@ -91,6 +97,7 @@ struct AdminLoginSheet: View {
                 Text(authError)
                     .font(.caption)
                     .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Button {
@@ -112,11 +119,17 @@ struct AdminLoginSheet: View {
                     .tracking(1.1)
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 48)
+                    .padding(.vertical, 14)
                     .foregroundStyle(ADGTheme.paper)
                     .background(ADGTheme.ink)
             }
             .disabled(!isValid || isSigningIn)
+            .accessibilityHint(mode == .signIn ? "Signs in with your account." : "Creates a student account.")
+        }
+        .onChange(of: session.authError) { _, error in
+            if let error {
+                UIAccessibility.post(notification: .announcement, argument: error)
+            }
         }
     }
 

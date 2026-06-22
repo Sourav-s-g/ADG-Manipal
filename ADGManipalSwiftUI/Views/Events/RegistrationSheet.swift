@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct RegistrationSheet: View {
     var event: Event
@@ -65,9 +66,11 @@ struct RegistrationSheet: View {
                                 .controlSize(.small)
                         } else {
                             Text("Submit")
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
                     .disabled(!isValid || isSubmitting)
+                    .accessibilityHint("Submits your registration for \(event.title).")
                 }
             }
         }
@@ -93,6 +96,7 @@ struct RegistrationSheet: View {
             isSubmitting = true
             await onSubmit(name, email, inputs)
             isSubmitting = false
+            UIAccessibility.post(notification: .announcement, argument: "Registration submitted for \(event.title).")
             dismiss()
         }
     }

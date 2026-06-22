@@ -114,8 +114,11 @@ final class BoardViewModel {
             feedbackSuccessMessage = "Thank you! Your feedback has been sent directly to the core team."
             
             // Automatic contextual reset for the success message toast banner
+            // Sleep and then reset on main thread to avoid threading issues
             try? await Task.sleep(nanoseconds: 3_000_000_000)
-            feedbackSuccessMessage = nil
+            await MainActor.run {
+                self.feedbackSuccessMessage = nil
+            }
         } catch {
             errorMessage = "Failed to send feedback: \(error.localizedDescription)"
         }

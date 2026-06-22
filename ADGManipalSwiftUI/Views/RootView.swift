@@ -11,7 +11,7 @@ struct RootView: View {
             BrandHeader(
                 isSignedIn: session.isAuthenticated,
                 isAdmin: session.isAdminAuthenticated,
-                onAccountTap: { showsAdminLogin = true }
+                onAccountTap: { [self] in showsAdminLogin = true }
             )
             .onLongPressGesture(minimumDuration: 3.0) {
                 showsAdminLogin = true
@@ -73,7 +73,7 @@ private struct ADGSegmentedTabs: View {
         .backgroundStyle(.clear)
         .controlSize(.large)
         .padding(6)
-        .frame(height: 58)
+        .frame(minHeight: 58)
         .background(ADGTheme.surface)
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -87,19 +87,23 @@ private struct AdminStatusBar: View {
             Text("CMS CONTROL")
                 .font(.caption2.bold())
                 .tracking(1.6)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer()
             if let email = session.adminEmail ?? session.userEmail {
                 Text(email)
                     .font(.caption2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Button("Sign Out") {
-                Task { await session.signOut() }
+                Task { @MainActor in
+                    await session.signOut()
+                }
             }
             .font(.caption.weight(.semibold))
         }
         .foregroundStyle(ADGTheme.paper)
         .padding(.horizontal, ADGTheme.pagePadding)
-        .frame(height: 42)
+        .padding(.vertical, 10)
         .background(ADGTheme.ink)
     }
 }

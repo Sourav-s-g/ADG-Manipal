@@ -24,11 +24,12 @@ struct ADGManipalApp: App {
                         .transition(.opacity) // Fade-out transition
                 } else {
                     RootView()
-                        .environment(session)
                         .transition(.asymmetric(insertion: .opacity, removal: .identity))
                 }
             }
+            .environment(session)
             .animation(.easeInOut(duration: 0.4), value: showSplash)
+            .preferredColorScheme(.light)
             .task {
                 await loadAppResources()
             }

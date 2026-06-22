@@ -34,36 +34,47 @@ struct RemoteImageView: View {
     private func loadImage() async {
         guard !isLoading else { return }
         guard let urlString, let url = URL(string: urlString) else {
-            loadedImage = nil
+            await MainActor.run { loadedImage = nil }
             return
         }
 
         if let cached = RemoteImageCache.shared.image(for: urlString) {
-            loadedImage = cached
+            await MainActor.run { loadedImage = cached }
             return
         }
 
         if let cached = URLCache.shared.cachedResponse(for: URLRequest(url: url)),
            let image = UIImage.downsampled(from: cached.data, maxPixelSize: 1100) {
             RemoteImageCache.shared.insert(image, for: urlString)
-            loadedImage = image
+            await MainActor.run { loadedImage = image }
             return
         }
 
-        isLoading = true
-        defer { isLoading = false }
+        await MainActor.run { isLoading = true }
 
         do {
             let request = URLRequest(url: url, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 20)
             let (data, response) = try await URLSession.shared.data(for: request)
+            
+            // Cache the response on background thread
             URLCache.shared.storeCachedResponse(CachedURLResponse(response: response, data: data), for: request)
+            
+            // Perform image downsampling on background thread (it's expensive)
             let image = UIImage.downsampled(from: data, maxPixelSize: 1100)
-            if let image {
-                RemoteImageCache.shared.insert(image, for: urlString)
+            
+            // Update UI state on main thread
+            await MainActor.run {
+                if let image {
+                    RemoteImageCache.shared.insert(image, for: urlString)
+                }
+                self.loadedImage = image
+                self.isLoading = false
             }
-            loadedImage = image
         } catch {
-            loadedImage = nil
+            await MainActor.run {
+                self.loadedImage = nil
+                self.isLoading = false
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
-import SwiftUI
 import PhotosUI
+import SwiftUI
+import UIKit
 
 struct EventsView: View {
     @Environment(ADGSession.self) private var session
@@ -15,12 +16,15 @@ struct EventsView: View {
                 HStack {
                     Image(systemName: "magnifyingglass")
                         .foregroundStyle(.secondary)
+                        .accessibilityHidden(true)
                     
                     TextField("Search events", text: $viewModel.searchText)
                         .textFieldStyle(.plain)
+                        .accessibilityLabel("Search events")
+                        .accessibilityHint("Filters events by name.")
                 }
                 .padding(.horizontal, 12)
-                .frame(height: 50)
+                .frame(minHeight: 50)
                 .background(.ultraThinMaterial)
                 .cornerRadius(20)
                 
@@ -36,6 +40,8 @@ struct EventsView: View {
                             .background(ADGTheme.ink)
                             .clipShape(RoundedRectangle(cornerRadius: 20))
                     }
+                    .accessibilityLabel("Create event")
+                    .accessibilityHint("Opens the event editor.")
                 }
             }
             .padding(.horizontal, ADGTheme.pagePadding)
@@ -66,8 +72,8 @@ struct EventsView: View {
                                 isRegistered: viewModel.isRegistered(for: event),
                                 onRegister: { handleRegistration(event) },
                                 onEdit: { viewModel.beginEdit(event) },
-                                onDelete: { Task { await viewModel.delete(event) } },
-                                onRoster: { Task { await viewModel.openRoster(for: event) } }
+                                onDelete: { Task { @MainActor in await viewModel.delete(event) } },
+                                onRoster: { Task { @MainActor in await viewModel.openRoster(for: event) } }
                             )
                         }
                     }
@@ -82,6 +88,8 @@ struct EventsView: View {
                             PastEventTile(event: event)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel(event.title)
+                        .accessibilityHint("Opens details for this past event.")
                     }
                 }
                 .padding(ADGTheme.pagePadding)
@@ -90,7 +98,9 @@ struct EventsView: View {
         .task { await viewModel.load(userID: session.userID) }
         .refreshable { await viewModel.load(userID: session.userID) }
         .onChange(of: session.userID) { _, userID in
-            Task { await viewModel.refreshRegistrationState(userID: userID) }
+            Task { @MainActor in
+                await viewModel.refreshRegistrationState(userID: userID)
+            }
         }
         
         // MARK: - Presentation Sheets & Overlays
@@ -118,7 +128,7 @@ struct EventsView: View {
             PastEventDetailPanel(
                 event: event,
                 isAdmin: session.isAdminAuthenticated,
-                onRoster: { Task { await viewModel.openRoster(for: event) } }
+                onRoster: { Task { @MainActor in await viewModel.openRoster(for: event) } }
             )
         }
         .alert("Sign in to register", isPresented: Binding(
@@ -128,6 +138,7 @@ struct EventsView: View {
             Button("Sign In") {
                 viewModel.requiresSignInForEvent = nil
                 showsSignInSheet = true
+                UIAccessibility.post(notification: .screenChanged, argument: "Sign in")
             }
             Button("Cancel", role: .cancel) {
                 viewModel.requiresSignInForEvent = nil
@@ -174,6 +185,7 @@ private struct UpcomingEventCard: View {
                 .contentShape(Rectangle())
                 .clipped()
                 .cornerRadius(8)
+                .accessibilityHidden(true)
 
             HStack(alignment: .top) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -189,19 +201,27 @@ private struct UpcomingEventCard: View {
                     }
                     Text(event.title)
                         .font(.title.bold())
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(event.startsAt, format: .dateTime.day().month().hour().minute())
                         .font(.caption.weight(.medium))
                         .tracking(1.1)
                         .textCase(.uppercase)
                 }
+                .accessibilityElement(children: .combine)
 
                 Spacer()
 
                 if isAdmin {
                     HStack(spacing: 12) {
                         Button(action: onRoster) { Image(systemName: "list.bullet.clipboard") }
+                            .accessibilityLabel("View roster")
+                            .accessibilityHint("Shows students registered for \(event.title).")
                         Button(action: onEdit) { Image(systemName: "pencil") }
+                            .accessibilityLabel("Edit event")
+                            .accessibilityHint("Opens the editor for \(event.title).")
                         Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
+                            .accessibilityLabel("Delete event")
+                            .accessibilityHint("Deletes \(event.title).")
                     }
                     .font(.body)
                 }
@@ -209,14 +229,18 @@ private struct UpcomingEventCard: View {
 
             Text(event.summary)
                 .lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true)
 
             HStack {
                 Text(event.venue)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
                 Text(event.registrationEnabled ? "Registration open" : "Registration closed")
                     .fontWeight(.semibold)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .font(.caption)
+            .accessibilityElement(children: .combine)
 
             Button(action: onRegister) {
                 Text(registerButtonTitle)
@@ -224,11 +248,12 @@ private struct UpcomingEventCard: View {
                     .tracking(1.2)
                     .textCase(.uppercase)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 44)
+                    .padding(.vertical, 14)
                     .foregroundStyle(ADGTheme.paper)
                     .background(buttonBackground)
             }
             .disabled(!event.registrationEnabled || isRegistered)
+            .accessibilityHint(registrationHint)
         }
         .padding(16)
         .background(ADGTheme.surface)
@@ -244,6 +269,12 @@ private struct UpcomingEventCard: View {
         if isRegistered { return .green }
         return event.registrationEnabled ? ADGTheme.ink : .gray
     }
+
+    private var registrationHint: String {
+        if isRegistered { return "You are already registered for \(event.title)." }
+        if event.registrationEnabled { return "Opens registration for \(event.title)." }
+        return "Registration is closed for \(event.title)."
+    }
 }
 
 private struct NoUpcomingEventsView: View {
@@ -253,6 +284,7 @@ private struct NoUpcomingEventsView: View {
             
             Text("🎉")
                 .font(.system(size: 60))
+                .accessibilityHidden(true)
                 .phaseAnimator([false, true]) { content, phase in
                     content
                         .scaleEffect(phase ? 1.1 : 1.0)
@@ -265,13 +297,16 @@ private struct NoUpcomingEventsView: View {
                 Text("No upcoming events yet")
                     .font(.headline)
                     .foregroundStyle(ADGTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 Text("Check back later or explore our past events!")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 32)
+            .accessibilityElement(children: .combine)
             
             Spacer()
         }
@@ -289,10 +324,11 @@ private struct PastEventTile: View {
                 .contentShape(Rectangle())
                 .clipped()
                 .cornerRadius(8)
+                .accessibilityHidden(true)
             
             Text(event.title)
                 .font(.headline)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
             
             Text(event.startsAt, style: .date)
                 .font(.caption)
@@ -300,6 +336,7 @@ private struct PastEventTile: View {
                 .foregroundStyle(.secondary)
         }
         .padding(8)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -319,12 +356,14 @@ private struct PastEventDetailPanel: View {
                             .aspectRatio(3 / 4, contentMode: .fit)
                             .cornerRadius(8)
                             .shadow(color: Color.black.opacity(0.08), radius: 8, x: 0, y: 4)
+                            .accessibilityHidden(true)
                     }
                     
                     VStack(alignment: .leading, spacing: 8) {
                         Text(event.title)
                             .font(.title2.bold())
                             .foregroundStyle(ADGTheme.ink)
+                            .fixedSize(horizontal: false, vertical: true)
                         
                         HStack(spacing: 12) {
                             Label(event.startsAt.formatted(date: .long, time: .shortened), systemImage: "calendar")
@@ -333,6 +372,7 @@ private struct PastEventDetailPanel: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
                     
                     Divider()
                     
@@ -345,7 +385,9 @@ private struct PastEventDetailPanel: View {
                             .font(.body)
                             .lineSpacing(6)
                             .foregroundStyle(ADGTheme.ink.opacity(0.8))
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .accessibilityElement(children: .combine)
 
                     if isAdmin {
                         Button {
@@ -357,10 +399,11 @@ private struct PastEventDetailPanel: View {
                                 .tracking(1)
                                 .textCase(.uppercase)
                                 .frame(maxWidth: .infinity)
-                                .frame(height: 44)
+                                .padding(.vertical, 14)
                                 .foregroundStyle(ADGTheme.paper)
                                 .background(ADGTheme.ink)
                         }
+                        .accessibilityHint("Shows registered students for \(event.title).")
                     }
                 }
                 .padding(20)
@@ -399,8 +442,7 @@ private struct EventEditor: View {
                         Text(coverImageURL)
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .truncationMode(.middle)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                 }
 

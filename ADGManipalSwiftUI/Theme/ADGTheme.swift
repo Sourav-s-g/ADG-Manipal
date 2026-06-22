@@ -60,7 +60,7 @@ enum ADGTheme {
 
     // MARK: - Brand Gradients
     /// Core metallic rose gold gradient directly matching the community logo artwork
-    static var roseGoldGradient: LinearGradient {
+    static func roseGoldGradient() -> LinearGradient {
         LinearGradient(
             colors: [roseGoldLight, roseGoldMedium, roseGoldDark],
             startPoint: .topLeading,
@@ -69,7 +69,7 @@ enum ADGTheme {
     }
     
     /// Soft transition context to smoothly shade views into the default paper background tone
-    static var roseGoldToWhiteGradient: LinearGradient {
+    static func roseGoldToWhiteGradient() -> LinearGradient {
         LinearGradient(
             colors: [roseGoldLight.opacity(0.45), paper],
             startPoint: .top,

@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftUI
 import Foundation
+import UIKit
 
 struct AboutUsView: View {
     @Environment(ADGSession.self) private var session
@@ -16,6 +17,7 @@ struct AboutUsView: View {
                         .lineSpacing(5)
                         .foregroundStyle(ADGTheme.ink.opacity(0.75))
                         .animation(.default, value: viewModel.aboutText)
+                        .fixedSize(horizontal: false, vertical: true)
                     
                     if session.isAdminAuthenticated {
                         Spacer()
@@ -28,6 +30,8 @@ struct AboutUsView: View {
                                 .foregroundStyle(ADGTheme.ink)
                         }
                         .buttonStyle(.plain)
+                        .accessibilityLabel("Edit about us text")
+                        .accessibilityHint("Opens the community description editor.")
                     }
                 }
             }
@@ -48,7 +52,7 @@ struct AboutUsView: View {
                             isAdmin: session.isAdminAuthenticated,
                             onSelect: { viewModel.selectedMember = member },
                             onEdit: { viewModel.beginEdit(member) },
-                            onDelete: { Task { await viewModel.delete(member) } }
+                            onDelete: { Task { @MainActor in await viewModel.delete(member) } }
                         )
                     }
                 }
@@ -67,7 +71,7 @@ struct AboutUsView: View {
                                 isAdmin: session.isAdminAuthenticated,
                                 onToggle: { togglePreviousMember(member.id) },
                                 onEdit: { viewModel.beginEdit(member) },
-                                onDelete: { Task { await viewModel.delete(member) } }
+                                onDelete: { Task { @MainActor in await viewModel.delete(member) } }
                             )
                         }
                     }
@@ -93,6 +97,8 @@ struct AboutUsView: View {
                         .background(ADGTheme.ink)
                         .clipShape(Circle())
                 }
+                .accessibilityLabel("Create board member")
+                .accessibilityHint("Opens the board member editor.")
                 .padding(.trailing, 24)
                 .padding(.bottom, 24)
             }
@@ -122,6 +128,7 @@ struct AboutUsView: View {
                             Task {
                                 await viewModel.saveAboutText()
                                 viewModel.isEditingAboutText = false
+                                UIAccessibility.post(notification: .announcement, argument: "About us text saved.")
                             }
                         }
                     }
@@ -156,17 +163,24 @@ private struct AboutUsFooterView: View {
                     .font(.title3.bold())
                     .tracking(0.2)
                     .foregroundStyle(ADGTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 
-                Link(destination: URL(string: "mailto:adgmitmanipal@gmail.com")!) {
+                if let emailURL = URL(string: "mailto:adgmitmanipal@gmail.com") {
+                    Link(destination: emailURL) {
                     Label("adgmitmanipal@gmail.com", systemImage: "envelope.fill")
                         .font(.body.weight(.medium))
                         .foregroundColor(.accentColor)
+                    }
+                    .accessibilityHint("Opens your email app.")
                 }
                 
-                Link(destination: URL(string: "tel:+91 9831579016")!) {
+                if let phoneURL = URL(string: "tel:+919831579016") {
+                    Link(destination: phoneURL) {
                     Label("+91 98315 79016", systemImage: "phone.fill")
                         .font(.body.weight(.medium))
                         .foregroundColor(ADGTheme.ink.opacity(0.8))
+                    }
+                    .accessibilityHint("Starts a phone call.")
                 }
             }
             
@@ -175,11 +189,13 @@ private struct AboutUsFooterView: View {
                 Text("App Feedback")
                     .font(.headline)
                     .foregroundStyle(ADGTheme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 Text("Notice a bug or have a suggestion? Share it here and our technical team will review it directly inside the control engine.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 TextField("Your Email Address", text: $viewModel.feedbackEmail)
                     .textFieldStyle(.roundedBorder)
@@ -197,6 +213,7 @@ private struct AboutUsFooterView: View {
                         .font(.caption.weight(.medium))
                         .foregroundColor(.green)
                         .transition(.opacity)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 
                 Button {
@@ -220,12 +237,18 @@ private struct AboutUsFooterView: View {
                 .tint(ADGTheme.ink)
                 .foregroundStyle(ADGTheme.paper)
                 .disabled(viewModel.feedbackEmail.isEmpty || viewModel.feedbackMessage.isEmpty || viewModel.isSubmittingFeedback)
+                .accessibilityHint("Sends your feedback to the ADG team.")
             }
             .padding(20)
             .background(ADGTheme.surface)
             .cornerRadius(12)
         }
         .padding(.horizontal, ADGTheme.pagePadding)
+        .onChange(of: viewModel.feedbackSuccessMessage) { _, value in
+            if let value {
+                UIAccessibility.post(notification: .announcement, argument: value)
+            }
+        }
     }
 }
 
@@ -242,20 +265,29 @@ private struct BoardMemberTile: View {
         VStack(alignment: .leading, spacing: 10) {
             Button(action: onSelect) {
                 RemoteImageView(urlString: member.headshotURL, aspectRatio: 3 / 4)
+                    .accessibilityHidden(true)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(member.name)
+            .accessibilityHint("Opens details for \(member.name).")
 
             Text(member.name)
                 .font(.headline)
+                .fixedSize(horizontal: false, vertical: true)
             Text(member.domain)
                 .font(.caption.weight(.medium))
                 .tracking(1.1)
                 .textCase(.uppercase)
+                .fixedSize(horizontal: false, vertical: true)
 
             if isAdmin {
                 HStack {
                     Button(action: onEdit) { Image(systemName: "pencil") }
+                        .accessibilityLabel("Edit board member")
+                        .accessibilityHint("Opens the editor for \(member.name).")
                     Button(role: .destructive, action: onDelete) { Image(systemName: "trash") }
+                        .accessibilityLabel("Delete board member")
+                        .accessibilityHint("Deletes \(member.name).")
                 }
                 .buttonStyle(.borderless)
             }
@@ -273,19 +305,23 @@ private struct BoardMemberDetail: View {
                 RemoteImageView(urlString: member.headshotURL, aspectRatio: 3 / 4)
                     .aspectRatio(3 / 4, contentMode: .fit)
                     .cornerRadius(8)
+                    .accessibilityHidden(true)
 
                 Text(member.name)
                     .font(.largeTitle.bold())
+                    .fixedSize(horizontal: false, vertical: true)
                 Text("\(member.role) / \(member.domain)")
                     .font(.caption.weight(.medium))
                     .tracking(1.2)
                     .textCase(.uppercase)
+                    .fixedSize(horizontal: false, vertical: true)
                 Rectangle()
                     .fill(ADGTheme.ink)
                     .frame(height: 1)
                 Text(member.bio)
                     .font(.body)
                     .lineSpacing(5)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: 12) {
                     linkButton("GitHub", systemImage: "chevron.left.forwardslash.chevron.right", url: member.githubURL)
@@ -293,6 +329,7 @@ private struct BoardMemberDetail: View {
                 }
             }
             .padding(ADGTheme.pagePadding)
+            .accessibilityElement(children: .contain)
         }
         .background(ADGTheme.paper)
     }
@@ -308,10 +345,11 @@ private struct BoardMemberDetail: View {
                     .tracking(1)
                     .textCase(.uppercase)
                     .padding(.horizontal, 14)
-                    .frame(height: 42)
+                    .padding(.vertical, 12)
                     .foregroundStyle(ADGTheme.paper)
                     .background(ADGTheme.ink)
             }
+            .accessibilityHint("Opens \(title) for \(member.name).")
         }
     }
 }
@@ -331,10 +369,12 @@ private struct PreviousBoardMemberRow: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(member.name)
                             .font(.headline)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         Text("\(member.role) / \(member.boardYear) / \(member.domain)")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     Spacer()
@@ -345,6 +385,8 @@ private struct PreviousBoardMemberRow: View {
                 }
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("\(member.name), \(member.role), \(member.boardYear), \(member.domain)")
+            .accessibilityHint(isExpanded ? "Collapses previous board member details." : "Expands previous board member details and links.")
 
             if isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
@@ -352,6 +394,7 @@ private struct PreviousBoardMemberRow: View {
                         Text(member.bio)
                             .font(.body)
                             .lineSpacing(4)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
 
                     HStack(spacing: 12) {
@@ -364,9 +407,11 @@ private struct PreviousBoardMemberRow: View {
                             Button(action: onEdit) {
                                 Label("Edit", systemImage: "pencil")
                             }
+                            .accessibilityHint("Opens the editor for \(member.name).")
                             Button(role: .destructive, action: onDelete) {
                                 Label("Delete", systemImage: "trash")
                             }
+                            .accessibilityHint("Deletes \(member.name).")
                         }
                         .font(.caption.weight(.semibold))
                     }
@@ -389,6 +434,7 @@ private struct PreviousBoardMemberRow: View {
                 Label(title, systemImage: systemImage)
             }
             .font(.caption.weight(.semibold))
+            .accessibilityHint("Opens \(title) for \(member.name).")
         }
     }
 }
@@ -424,9 +470,11 @@ private struct BoardMemberEditor: View {
                             .scaledToFill()
                             .frame(height: 150)
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .accessibilityLabel("Selected headshot preview")
                     } else if let posterURL = viewModel.draft.headshotURL {
                         RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
                             .frame(height: 150)
+                            .accessibilityLabel("Current headshot preview")
                     }
                     
                     PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {

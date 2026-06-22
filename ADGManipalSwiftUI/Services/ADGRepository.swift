@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 import UIKit
 
-actor ADGRepository {
+final class ADGRepository {
     static let shared = ADGRepository()
 
     private let client: SupabaseClient
