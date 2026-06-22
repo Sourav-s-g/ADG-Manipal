@@ -5,6 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Privacy Policy | Apple Developers Group</title>
     <link rel="stylesheet" href="css/style.css">
+    <style>
+        /* Enhanced readability tweaks over existing styles */
+        .legal-content h1 {
+            margin-bottom: 24px;
+        }
+        .legal-content .date {
+            margin-bottom: 40px;
+            font-style: italic;
+        }
+        .legal-content h2 {
+            margin-top: 48px;
+            margin-bottom: 20px;
+        }
+        .legal-content h3 {
+            margin-top: 28px;
+            margin-bottom: 14px;
+        }
+        .legal-content p {
+            line-height: 1.75;
+            margin-bottom: 24px;
+        }
+        .legal-content ul {
+            margin-bottom: 28px;
+            padding-left: 24px;
+        }
+        .legal-content li {
+            line-height: 1.75;
+            margin-bottom: 12px; /* Adds breathing room between bullet points */
+        }
+    </style>
 </head>
 <body>
 
@@ -30,7 +60,8 @@
                 
                 <h3>Authentication Data</h3>
                 <ul>
-                    <li>Email address and password</li>
+                    <li>Email address and password (for standard email-based registrations)</li>
+                    <li><strong>Sign in with Apple Data:</strong> If you authenticate using Sign in with Apple, we collect your unique stable user identity token, full name, and your email address (or the anonymized Private Relay email alias provided by Apple).</li>
                     <li>Full name (collected strictly during user sign-up)</li>
                     <li>Supabase user ID and system metadata assigned by the backend infrastructure</li>
                 </ul>
@@ -51,7 +82,7 @@
                 <h2>2. How We Use the Information</h2>
                 <p>Collected information is used exclusively to deliver the core functional experiences of the application:</p>
                 <ul>
-                    <li><strong>Authentication:</strong> Email and password credentials are processed via Supabase Auth to establish secure user accounts, manage active sessions, grant registration capabilities, and provision administrative access levels.</li>
+                    <li><strong>Authentication:</strong> Email and password credentials, or Sign in with Apple security identifiers, are processed via Supabase Auth to establish secure user accounts, manage active sessions, grant registration capabilities, and provision administrative access levels.</li>
                     <li><strong>Event Management:</strong> Registration information is compiled into internal rosters to track event participation and manage event workflows.</li>
                     <li><strong>Media & Display:</strong> Uploaded images and structured app content are fetched from our database to render announcement feeds, event cover cards, active roster details, and board member profile layouts within the user interface.</li>
                 </ul>
@@ -74,7 +105,8 @@
 
                 <h2>5. User Rights and Data Deletion</h2>
                 <p>We respect your rights over your data records. The application provides native controls for signing up, signing in, and signing out of your active session.</p>
-                <p>While the user interface does not currently offer a self-service automated account deletion switch, users retain full rights to have their data purged. Administrators maintain the systemic capabilities to delete individual announcements, events, and board entries. If you wish to revoke your registration details, clear your specific data fields, or request the total deletion of your authentication account profile from the backend database, please issue a manual deletion request to our support contacts listed below.</p>
+                <p>In full compliance with App Store Guideline 5.1.1, <strong>the application features an automated, self-service account deletion trigger directly within the user account/profile interface.</strong> Initiating this process instantly and permanently deletes your authentication account from Supabase Auth, along with all associated historical records, personal metadata, and event registration entries across our database infrastructure.</p>
+                <p>Alternatively, users retain full rights to request manual purges or modifications to their specific data records by issuing a request through our official communication channels listed below.</p>
                 
                 <h2>6. Contact Information</h2>
                 <p>For support, operations queries, or to exercise your rights regarding manual account data deletion, please contact us directly via our official communication channels:</p>
