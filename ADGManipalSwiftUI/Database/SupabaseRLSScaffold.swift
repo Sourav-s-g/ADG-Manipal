@@ -63,6 +63,15 @@ enum SupabaseRLSScaffold {
       id text primary key,
       about_text text not null default ''
     );
+    
+    create table app_feedback (
+      id uuid default gen_random_uuid() primary key,
+      created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+      email text not null,
+      message text not null,
+      user_id uuid references auth.users(id) on delete set null
+    );
+
 
     alter table public.announcements enable row level security;
     alter table public.events enable row level security;

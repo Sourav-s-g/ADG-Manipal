@@ -9,6 +9,7 @@ final class ADGSession {
     var isAdminAuthenticated = false
     var userID: UUID?
     var userEmail: String?
+    var userFullName: String?
     var adminEmail: String?
     var authError: String?
     var isPasswordRecoveryActive = false
@@ -79,6 +80,17 @@ final class ADGSession {
         clearUser()
     }
 
+    func deleteAccount() async {
+        authError = nil
+        do {
+            try await client.rpc("delete_own_user").execute()
+            clearUser()
+            try await client.auth.signOut()
+        } catch {
+            authError = error.localizedDescription
+        }
+    }
+
     func beginPasswordRecovery() {
         isPasswordRecoveryActive = true
     }
@@ -96,6 +108,7 @@ final class ADGSession {
 
         userID = user.id
         userEmail = user.email
+        userFullName = user.userMetadata["full_name"]?.stringValue
         adminEmail = isAdmin ? user.email : nil
         isAdminAuthenticated = isAdmin
         isAuthenticated = true
@@ -104,6 +117,7 @@ final class ADGSession {
     private func clearUser() {
         userID = nil
         userEmail = nil
+        userFullName = nil
         adminEmail = nil
         isAuthenticated = false
         isAdminAuthenticated = false

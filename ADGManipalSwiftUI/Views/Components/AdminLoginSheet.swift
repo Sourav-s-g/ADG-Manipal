@@ -10,6 +10,8 @@ struct AdminLoginSheet: View {
     @State private var password = ""
     @State private var showPassword = false
     @State private var isSigningIn = false
+    @State private var isDeletingAccount = false
+    @State private var showDeleteConfirmation = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
@@ -30,10 +32,18 @@ struct AdminLoginSheet: View {
 
     private var signedInContent: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(session.userEmail ?? "Signed in")
+            VStack(alignment: .leading, spacing: 8) {
+                Text(session.userFullName ?? session.userEmail ?? "Signed in")
                     .font(.headline)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let email = session.userEmail, session.userFullName != nil {
+                    Text(email)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Text(session.isAdminAuthenticated ? "Admin mode active" : "Student account")
                     .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
@@ -59,6 +69,35 @@ struct AdminLoginSheet: View {
                     .background(ADGTheme.ink)
             }
             .accessibilityHint("Signs out of the current account.")
+            .disabled(isSigningIn || isDeletingAccount)
+
+            Button(role: .destructive) {
+                showDeleteConfirmation = true
+            } label: {
+                Text(isDeletingAccount ? "Deleting Account..." : "Delete Account")
+                    .font(.callout.weight(.bold))
+                    .tracking(1.1)
+                    .textCase(.uppercase)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .foregroundStyle(.white)
+                    .background(Color.red)
+            }
+            .disabled(isSigningIn || isDeletingAccount)
+            .accessibilityHint("Permanently delete your account and sign out.")
+            .alert("Delete Account", isPresented: $showDeleteConfirmation) {
+                Button("Delete", role: .destructive) {
+                    Task {
+                        isDeletingAccount = true
+                        await session.deleteAccount()
+                        isDeletingAccount = false
+                        dismiss()
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This will permanently delete your account and sign you out.")
+            }
         }
     }
 
