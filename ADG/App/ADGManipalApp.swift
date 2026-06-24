@@ -50,11 +50,7 @@ struct ADGManipalApp: App {
             .sheet(isPresented: $showResetPasswordScreen) {
                 UpdatePasswordView(isPresented: $showResetPasswordScreen)
             }
-            .onChange(of: showResetPasswordScreen) { showing in
-                if !showing {
-                    session.endPasswordRecovery()
-                }
-            }
+            // ❌ REMOVED the .onChange modifier block that was causing the 'cannot find viewModel' error
             // 4. Global configurations
             .environment(session)
             .animation(.easeInOut(duration: 0.4), value: showSplash)

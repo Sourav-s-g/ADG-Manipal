@@ -462,7 +462,8 @@ private struct BoardMemberEditor: View {
                     optionalField("GitHub URL", value: $viewModel.draft.githubURL)
                     optionalField("LinkedIn URL", value: $viewModel.draft.linkedInURL)
                 }
-
+                
+                // MARK: - Headshot preview
                 Section("Headshot Media (Admin Only)") {
                     if let localPreviewImage {
                         Image(uiImage: localPreviewImage)

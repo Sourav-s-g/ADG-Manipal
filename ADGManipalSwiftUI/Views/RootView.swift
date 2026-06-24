@@ -47,8 +47,8 @@ struct RootView: View {
                 .presentationDetents([.height(430)])
                 .presentationDragIndicator(.visible)
         }
-        .onChange(of: session.isPasswordRecoveryActive) { isRecoveryActive in
-            if isRecoveryActive {
+        .onChange(of: session.isPasswordRecoveryActive) { oldValue, newValue in
+            if newValue {
                 showsAdminLogin = false
             }
         }

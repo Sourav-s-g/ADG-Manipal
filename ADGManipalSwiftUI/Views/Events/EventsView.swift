@@ -125,10 +125,12 @@ struct EventsView: View {
             RosterView(event: viewModel.rosterEvent, registrations: viewModel.roster)
         }
         .sheet(item: $viewModel.selectedPastEvent) { event in
+            // FIXED: Added the explicit onDelete trailing task block closure definition here
             PastEventDetailPanel(
                 event: event,
                 isAdmin: session.isAdminAuthenticated,
-                onRoster: { Task { @MainActor in await viewModel.openRoster(for: event) } }
+                onRoster: { Task { @MainActor in await viewModel.openRoster(for: event) } },
+                onDelete: { Task { @MainActor in await viewModel.delete(event) } }
             )
         }
         .alert("Sign in to register", isPresented: Binding(
@@ -344,6 +346,7 @@ private struct PastEventDetailPanel: View {
     var event: Event
     var isAdmin: Bool
     var onRoster: () -> Void
+    var onDelete: () -> Void // Property successfully decoupled from a viewmodel variable scope!
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -390,20 +393,38 @@ private struct PastEventDetailPanel: View {
                     .accessibilityElement(children: .combine)
 
                     if isAdmin {
-                        Button {
-                            dismiss()
-                            onRoster()
-                        } label: {
-                            Label("View Roster", systemImage: "list.bullet.clipboard")
-                                .font(.caption.weight(.bold))
-                                .tracking(1)
-                                .textCase(.uppercase)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 14)
-                                .foregroundStyle(ADGTheme.paper)
-                                .background(ADGTheme.ink)
+                        VStack(spacing: 12) {
+                            Button {
+                                dismiss()
+                                onRoster()
+                            } label: {
+                                Label("View Roster", systemImage: "list.bullet.clipboard")
+                                    .font(.caption.weight(.bold))
+                                    .tracking(1)
+                                    .textCase(.uppercase)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .foregroundStyle(ADGTheme.paper)
+                                    .background(ADGTheme.ink)
+                            }
+                            .accessibilityHint("Shows registered students for \(event.title).")
+
+                            Button(role: .destructive) {
+                                dismiss()
+                                onDelete() // Triggers the unified callback pipeline perfectly!
+                            } label: {
+                                Label("Delete Event", systemImage: "trash")
+                                    .font(.caption.weight(.bold))
+                                    .tracking(1)
+                                    .textCase(.uppercase)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 14)
+                                    .foregroundStyle(.white)
+                                    .background(Color.red)
+                            }
+                            .accessibilityLabel("Delete past event")
+                            .accessibilityHint("Permanently deletes \(event.title) from the record.")
                         }
-                        .accessibilityHint("Shows registered students for \(event.title).")
                     }
                 }
                 .padding(20)
@@ -422,6 +443,7 @@ private struct PastEventDetailPanel: View {
 private struct EventEditor: View {
     @Bindable var viewModel: EventsViewModel
     @Environment(\.dismiss) private var dismiss
+    @State private var localPreviewImage: UIImage? = nil
 
     var body: some View {
         NavigationStack {
@@ -433,16 +455,22 @@ private struct EventEditor: View {
                     DatePicker("Starts", selection: $viewModel.draft.startsAt)
                 }
                 
-                Section("Poster") {
-                    PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
-                        Label("Choose Event Poster", systemImage: "photo")
+                Section("Poster (Admin Only)") {
+                    if let localPreviewImage {
+                        Image(uiImage: localPreviewImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(height: 150)
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .accessibilityLabel("Selected event poster preview")
+                    } else if let posterURL = viewModel.draft.coverImageURL {
+                        RemoteImageView(urlString: posterURL, aspectRatio: 3 / 4)
+                            .frame(height: 150)
+                            .accessibilityLabel("Current event poster preview")
                     }
-
-                    if let coverImageURL = viewModel.draft.coverImageURL {
-                        Text(coverImageURL)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
+                    
+                    PhotosPicker(selection: $viewModel.selectedPhoto, matching: .images) {
+                        Label(localPreviewImage == nil ? "Choose Event Poster" : "Change Event Poster", systemImage: "photo.on.rectangle")
                     }
                 }
 
@@ -478,6 +506,17 @@ private struct EventEditor: View {
                         Task {
                             await viewModel.saveDraft()
                             dismiss()
+                        }
+                    }
+                }
+            }
+            // ✅ New iOS 17+ Syntax
+            .onChange(of: viewModel.selectedPhoto) { oldItem, newItem in
+                Task {
+                    if let data = try? await newItem?.loadTransferable(type: Data.self),
+                       let image = UIImage(data: data) {
+                        await MainActor.run {
+                            self.localPreviewImage = image
                         }
                     }
                 }
