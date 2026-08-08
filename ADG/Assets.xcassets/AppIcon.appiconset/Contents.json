@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "ADG_logo.jpeg",
+      "filename" : "adgnew.jpg",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "ADG_logo 1.jpeg",
+      "filename" : "adgnew 1.jpg",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
